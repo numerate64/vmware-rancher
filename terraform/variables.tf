@@ -43,6 +43,16 @@ variable "content_library_item_name" {
   type    = string
   default = "aqtech-ubuntu24"
 }
+variable "customization_spec_name" {
+  type        = string
+  default     = "Linux - AQ"
+  description = "Name of the existing vSphere guest customization specification applied after each VM clone."
+}
+variable "customization_spec_timeout_minutes" {
+  type        = number
+  default     = 10
+  description = "Minutes Terraform waits for vSphere guest customization to complete after cloning."
+}
 
 variable "cluster_name" {
   type    = string

@@ -8,6 +8,7 @@ network_name         = "VM Network"
 vm_folder            = "Rancher"
 content_library_name = "aqtech-images"
 content_library_item_name = "aqtech-ubuntu24"
+customization_spec_name = "Linux - AQ"
 
 cluster_name       = "rancher-prod"
 num_cpus           = 4

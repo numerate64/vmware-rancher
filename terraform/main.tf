@@ -41,7 +41,14 @@ resource "vsphere_virtual_machine" "k3s_server" {
     size  = var.disk_gb
   }
 
-  clone { template_uuid = data.vsphere_content_library_item.ubuntu.id }
+  clone {
+    template_uuid = data.vsphere_content_library_item.ubuntu.id
+
+    customization_spec {
+      id      = var.customization_spec_name
+      timeout = var.customization_spec_timeout_minutes
+    }
+  }
 
   extra_config = var.cloud_init_enabled ? {
     "guestinfo.metadata"          = base64encode("instance-id: ${each.value}\nlocal-hostname: ${each.value}\n")

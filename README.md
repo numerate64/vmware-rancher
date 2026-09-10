@@ -9,12 +9,15 @@ Local-first infrastructure-as-code for a three-node, embedded-etcd K3s cluster r
 | vCenter | `hci-vcenter.aqtech.dev` |
 | Datacenter / cluster | `TierPoint` / `DELL` |
 | Image | Content Library `aqtech-images` → OVF `aqtech-ubuntu24` |
+| Guest customization | Existing vSphere specification `Linux - AQ` |
 | Nodes | 3 Ubuntu 24 VMs, default 4 vCPU / 16 GiB / 100 GiB |
 | Network | DHCP for nodes on `VM Network` |
 | Control-plane HA | kube-vip ARP virtual IP |
 | Rancher | `aq-rancher.aqtech.dev`, internal CA certificate |
 
 `vmware_asa_ds1` is the default datastore. Set `datastore_name` to `vmware_asa_ds2` or `vmware_asa_ds3` in your ignored `terraform.tfvars` if you want a different placement. Node VM addresses are DHCP leases; **the two kube-vip addresses must be excluded/reserved addresses**, not ordinary DHCP leases.
+
+Terraform applies `Linux - AQ` as a vSphere guest customization specification immediately after each clone. Customization specs run during cloning; they do not retroactively customize already-created VMs. Review the next Terraform plan and deliberately replace the current VMs if they need this customization.
 
 ## Required decisions before applying
 
