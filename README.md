@@ -43,7 +43,7 @@ openssl req -x509 -new -sha256 -days 3650 \
 chmod 600 ~/.config/rancher/aqtech-root-ca.key
 ```
 
-The playbook reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
+The playbook creates `cattle-system` before creating its TLS secrets, then reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
 
 ## Local test workflow
 

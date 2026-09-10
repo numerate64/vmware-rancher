@@ -57,6 +57,13 @@
   ansible.builtin.command: /usr/local/bin/k3s kubectl -n cert-manager rollout status deployment/cert-manager --timeout=180s
   changed_when: false
 
+- name: Create the Rancher namespace before creating its TLS secrets
+  ansible.builtin.shell: >-
+    /usr/local/bin/k3s kubectl create namespace cattle-system
+    --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+  args: { executable: /bin/bash }
+  changed_when: false
+
 - name: Copy internal CA material to bootstrap host temporarily
   ansible.builtin.copy:
     src: "{{ item.src }}"
