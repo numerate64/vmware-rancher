@@ -57,14 +57,13 @@ Use a supported Linux control host with at least 2 vCPU, 4 GiB RAM, and 20 GiB f
 - `jq`, OpenSSH client, Git, `curl`, `ca-certificates`, and `openssl`
 - Python 3 (required by Ansible and common collection dependencies)
 
-For Ubuntu 24.04, install the operating-system packages with:
+For Ubuntu 24.04, run the included installer from the repository root:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y ansible jq git openssh-client curl ca-certificates openssl python3
+./scripts/install-ubuntu-prerequisites.sh
 ```
 
-Install Terraform from [HashiCorp's official Linux instructions](https://developer.hashicorp.com/terraform/install) and verify it meets the required version with `terraform version`.
+It installs Terraform from [HashiCorp's official Linux APT repository](https://developer.hashicorp.com/terraform/install), plus Ansible and the required Ubuntu packages. It requires `sudo`, supports Ubuntu only, and makes no vSphere or Rancher changes.
 
 ### Access, credentials, and network
 
