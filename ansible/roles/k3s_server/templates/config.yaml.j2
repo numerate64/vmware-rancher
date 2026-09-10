@@ -1,0 +1,10 @@
+token: "{{ k3s_token_slurp.content | b64decode | trim }}"
+tls-san:
+  - "{{ kube_vip_api_address }}"
+  - "{{ rancher_hostname }}"
+disable:
+  - traefik
+  - servicelb
+{% if not k3s_bootstrap %}
+server: "https://{{ kube_vip_api_address }}:6443"
+{% endif %}

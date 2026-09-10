@@ -1,0 +1,113 @@
+---
+- name: Validate Rancher and CA inputs
+  ansible.builtin.assert:
+    that:
+      - rancher_hostname | length > 0
+      - rancher_ingress_address | length > 0
+      - internal_ca_cert_path | length > 0
+      - internal_ca_key_path | length > 0
+
+- name: Check local private CA material on the Ansible controller
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  delegate_to: localhost
+  become: false
+  loop: ["{{ internal_ca_cert_path }}", "{{ internal_ca_key_path }}"]
+  register: ca_files
+
+- name: Require local private CA material
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: "Create or obtain the internal CA certificate and key on the Ansible control host; never commit them."
+  loop: "{{ ca_files.results }}"
+  no_log: true
+
+- name: Download Helm
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get-helm-3
+    mode: "0700"
+
+- name: Install Helm
+  ansible.builtin.command: /tmp/get-helm-3
+  args: { creates: /usr/local/bin/helm }
+
+- name: Add Helm repositories
+  ansible.builtin.command: "helm repo add {{ item.name }} {{ item.url }}"
+  changed_when: false
+  loop:
+    - { name: jetstack, url: https://charts.jetstack.io }
+    - { name: rancher-stable, url: https://releases.rancher.com/server-charts/stable }
+
+- name: Update Helm repositories
+  ansible.builtin.command: helm repo update
+  changed_when: false
+
+- name: Install cert-manager
+  ansible.builtin.command: >-
+    helm upgrade --install cert-manager jetstack/cert-manager
+    --namespace cert-manager --create-namespace
+    --version {{ cert_manager_version }} --set crds.enabled=true
+  changed_when: true
+
+- name: Wait for cert-manager deployment
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n cert-manager rollout status deployment/cert-manager --timeout=180s
+  changed_when: false
+
+- name: Copy internal CA material to bootstrap host temporarily
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - { src: "{{ internal_ca_cert_path }}", dest: /run/aqtech-root-ca.crt }
+    - { src: "{{ internal_ca_key_path }}", dest: /run/aqtech-root-ca.key }
+  no_log: true
+
+- name: Create or update the internal CA secret
+  ansible.builtin.shell: >-
+    /usr/local/bin/k3s kubectl -n cert-manager create secret tls aqtech-internal-ca
+    --cert=/run/aqtech-root-ca.crt --key=/run/aqtech-root-ca.key
+    --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+  args: { executable: /bin/bash }
+  no_log: true
+
+- name: Remove temporary CA files from bootstrap host
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: [/run/aqtech-root-ca.crt, /run/aqtech-root-ca.key]
+  no_log: true
+
+- name: Create ClusterIssuer for Rancher certificates
+  ansible.builtin.template:
+    src: cluster-issuer.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/rancher-cluster-issuer.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install ingress-nginx with kube-vip LoadBalancer address
+  ansible.builtin.command: >-
+    helm upgrade --install ingress-nginx oci://ghcr.io/nginx/charts/ingress-nginx
+    --namespace ingress-nginx --create-namespace
+    --set controller.service.loadBalancerClass=kube-vip.io/kube-vip-class
+    --set controller.service.loadBalancerIP={{ rancher_ingress_address }}
+  changed_when: true
+
+- name: Install Rancher HA
+  ansible.builtin.command: >-
+    helm upgrade --install rancher rancher-stable/rancher
+    --namespace cattle-system --create-namespace
+    --version {{ rancher_chart_version }}
+    --set hostname={{ rancher_hostname }}
+    --set replicas={{ rancher_replicas }}
+    --set ingress.tls.source=rancher
+    --set privateCA=true
+  changed_when: true
+
+- name: Wait for Rancher rollout
+  ansible.builtin.command: /usr/local/bin/k3s kubectl -n cattle-system rollout status deployment/rancher --timeout=600s
+  changed_when: false

@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+crash.log
+.env
+ansible/inventory/hosts.yml
+ansible/inventory/group_vars/all.yml
+ansible/inventory/group_vars/all/vault.yml
+*.retry

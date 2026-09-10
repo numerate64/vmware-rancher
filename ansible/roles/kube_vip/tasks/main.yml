@@ -1,0 +1,22 @@
+---
+- name: Validate kube-vip addresses
+  ansible.builtin.assert:
+    that:
+      - kube_vip_api_address | length > 0
+      - rancher_ingress_address | length > 0
+      - kube_vip_api_address != rancher_ingress_address
+    fail_msg: "Set distinct reserved IPv4 addresses for the K3s API and Rancher ingress."
+
+- name: Install kube-vip RBAC and manager
+  ansible.builtin.template:
+    src: kube-vip.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/kube-vip.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Wait for kube-vip API address
+  ansible.builtin.wait_for:
+    host: "{{ kube_vip_api_address }}"
+    port: 6443
+    timeout: 120

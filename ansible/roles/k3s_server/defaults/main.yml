@@ -1,0 +1,5 @@
+k3s_version: "v1.31.6+k3s1"
+k3s_bootstrap: false
+k3s_token_file: /etc/rancher/k3s/cluster-token
+kube_vip_api_address: ""
+rancher_hostname: ""

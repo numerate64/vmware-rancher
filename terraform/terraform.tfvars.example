@@ -1,0 +1,18 @@
+# Keep the real terraform.tfvars outside Git. Prefer TF_VAR_vsphere_user and
+# TF_VAR_vsphere_password environment variables or Terraform Cloud variable sets.
+vsphere_server       = "hci-vcenter.aqtech.dev"
+datacenter_name      = "TierPoint"
+compute_cluster_name = "DELL"
+datastore_name       = "vmware_asa_ds1" # Change to vmware_asa_ds2 or vmware_asa_ds3 as needed.
+network_name         = "VM Network"
+vm_folder            = "Rancher"
+content_library_name = "aqtech-images"
+content_library_item_name = "aqtech-ubuntu24"
+
+cluster_name       = "rancher-prod"
+num_cpus           = 4
+memory_mb          = 16384
+disk_gb            = 100
+ssh_username       = "ansible"
+# This repository includes the public key retrieved from github.com/k-laughman.keys.
+ssh_public_key_path = "../config/k-laughman.keys"

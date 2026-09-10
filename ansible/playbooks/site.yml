@@ -1,0 +1,39 @@
+---
+- name: Update Ubuntu hosts
+  hosts: k3s_servers
+  become: true
+  tasks:
+    - name: Update all installed packages
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        cache_valid_time: 3600
+    - name: Install K3s prerequisites
+      ansible.builtin.apt:
+        name: [curl, ca-certificates, open-iscsi, nfs-common]
+        state: present
+
+- name: Bootstrap the first embedded-etcd server
+  hosts: k3s_servers[0]
+  become: true
+  roles: [k3s_server]
+  vars:
+    k3s_bootstrap: true
+
+- name: Install kube-vip control-plane endpoint
+  hosts: k3s_servers[0]
+  become: true
+  roles: [kube_vip]
+
+- name: Join the remaining embedded-etcd servers
+  hosts: k3s_servers
+  become: true
+  roles:
+    - role: k3s_server
+      vars: { k3s_bootstrap: false }
+      when: inventory_hostname != groups['k3s_servers'][0]
+
+- name: Install Rancher on the HA cluster
+  hosts: k3s_servers[0]
+  become: true
+  roles: [rancher]

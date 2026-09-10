@@ -1,0 +1,11 @@
+# Reserved addresses on VM Network. They must not be leased to DHCP clients.
+# Create matching internal DNS records.
+kube_vip_api_address: "10.227.95.101"
+rancher_ingress_address: "10.227.96.101"
+rancher_hostname: "aq-rancher.aqtech.dev"
+k3s_version: "v1.31.6+k3s1" # Review and deliberately update before production.
+kube_vip_interface: "ens192" # Confirm the NIC name on aqtech-ubuntu24.
+
+# A private CA root certificate and its key, stored only on the Ansible control host.
+internal_ca_cert_path: "~/.config/rancher/aqtech-root-ca.crt"
+internal_ca_key_path: "~/.config/rancher/aqtech-root-ca.key"

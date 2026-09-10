@@ -1,0 +1,11 @@
+all:
+  vars:
+    ansible_user: ansible
+    # Keep the private key on the control host. Use an absolute local path.
+    ansible_ssh_private_key_file: ~/.ssh/aqtech-rancher_ed25519
+  children:
+    k3s_servers:
+      hosts:
+        rancher-prod-01: { ansible_host: 192.0.2.11 }
+        rancher-prod-02: { ansible_host: 192.0.2.12 }
+        rancher-prod-03: { ansible_host: 192.0.2.13 }

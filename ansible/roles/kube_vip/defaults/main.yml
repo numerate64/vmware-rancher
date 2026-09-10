@@ -1,0 +1,4 @@
+kube_vip_version: "v0.8.9"
+kube_vip_interface: "ens192"
+kube_vip_api_address: ""
+rancher_ingress_address: ""

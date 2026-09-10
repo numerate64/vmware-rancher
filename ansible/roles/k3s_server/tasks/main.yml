@@ -1,0 +1,71 @@
+---
+- name: Validate K3s endpoint configuration
+  ansible.builtin.assert:
+    that: [kube_vip_api_address | length > 0, rancher_hostname | length > 0]
+
+- name: Generate cluster token on bootstrap server
+  ansible.builtin.command: openssl rand -hex 32
+  register: k3s_token_generated
+  changed_when: true
+  no_log: true
+  when: k3s_bootstrap
+
+- name: Persist cluster token on bootstrap server
+  ansible.builtin.copy:
+    content: "{{ k3s_token_generated.stdout }}\n"
+    dest: "{{ k3s_token_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  no_log: true
+  when: k3s_bootstrap
+
+- name: Read bootstrap server token
+  ansible.builtin.slurp:
+    src: "{{ k3s_token_file }}"
+  delegate_to: "{{ groups['k3s_servers'][0] }}"
+  delegate_facts: true
+  register: k3s_token_slurp
+  no_log: true
+
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write K3s server configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart K3s
+  no_log: true
+
+- name: Install K3s server
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION='{{ k3s_version }}' INSTALL_K3S_EXEC='server' sh -
+  args:
+    creates: /usr/local/bin/k3s
+    executable: /bin/bash
+
+- name: Ensure K3s is running
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: true
+
+- name: Wait for Kubernetes API on bootstrap server
+  ansible.builtin.command: /usr/local/bin/k3s kubectl get node
+  register: k3s_api
+  changed_when: false
+  retries: 30
+  delay: 5
+  until: k3s_api.rc == 0
+  when: k3s_bootstrap
