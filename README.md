@@ -30,22 +30,6 @@ When configured, Terraform applies the named vSphere guest customization specifi
 
 See [the customer configuration guide](docs/customer-configuration.md) for every customer-owned variable and image prerequisite.
 
-### Local lab CA
-
-For a disposable local test, create a dedicated CA on the Ansible control host. This is not a replacement for the organization's production PKI. Keep the key outside the repository and distribute the resulting certificate to clients that need to trust Rancher.
-
-```bash
-install -d -m 700 ~/.config/rancher
-openssl genrsa -out ~/.config/rancher/rancher-root-ca.key 4096
-openssl req -x509 -new -sha256 -days 3650 \
-  -key ~/.config/rancher/rancher-root-ca.key \
-  -out ~/.config/rancher/rancher-root-ca.crt \
-  -subj "/CN=Rancher Lab CA"
-chmod 600 ~/.config/rancher/rancher-root-ca.key
-```
-
-The playbook creates `cattle-system` before creating its TLS secrets, then reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
-
 ## Ansible control-host prerequisites
 
 Use a supported Linux control host with at least 2 vCPU, 4 GiB RAM, and 20 GiB free disk. Ubuntu 24.04 LTS is the tested baseline; another current Linux distribution is suitable if it provides the tools below.
@@ -79,6 +63,22 @@ The supplied SSH configuration uses `StrictHostKeyChecking=accept-new`: new VM h
 ```bash
 ansible-galaxy collection install -r ansible/requirements.yml
 ```
+
+### Local lab CA
+
+For a disposable local test, create a dedicated CA on the Ansible control host. This is not a replacement for the organization's production PKI. Keep the key outside the repository and distribute the resulting certificate to clients that need to trust Rancher.
+
+```bash
+install -d -m 700 ~/.config/rancher
+openssl genrsa -out ~/.config/rancher/rancher-root-ca.key 4096
+openssl req -x509 -new -sha256 -days 3650 \
+  -key ~/.config/rancher/rancher-root-ca.key \
+  -out ~/.config/rancher/rancher-root-ca.crt \
+  -subj "/CN=Rancher Lab CA"
+chmod 600 ~/.config/rancher/rancher-root-ca.key
+```
+
+The playbook creates `cattle-system` before creating its TLS secrets, then reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
 
 ## Local test workflow
 
