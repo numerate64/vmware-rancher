@@ -6,28 +6,27 @@ Local-first infrastructure-as-code for a three-node, embedded-etcd K3s cluster r
 
 | Component | Choice |
 |---|---|
-| vCenter | `hci-vcenter.aqtech.dev` |
-| Datacenter / cluster | `TierPoint` / `DELL` |
-| Image | Content Library `aqtech-images` → OVF `aqtech-ubuntu24` |
-| Guest customization | Existing vSphere specification `Linux - AQ` |
+| vCenter | Customer-supplied vCenter |
+| Datacenter / cluster | Customer-supplied placement targets |
+| Image | Customer Content Library OVF or VM template |
+| Guest customization | Optional existing vSphere customization specification |
 | Nodes | 3 Ubuntu 24 VMs, default 4 vCPU / 16 GiB / 100 GiB |
-| Network | DHCP for nodes on `VM Network` |
+| Network | DHCP for nodes on a customer port group |
 | Control-plane HA | kube-vip ARP virtual IP |
-| Rancher | `aq-rancher.aqtech.dev`, internal CA certificate |
+| Rancher | Customer FQDN, internal CA certificate |
 
-`vmware_asa_ds1` is the default datastore. Set `datastore_name` to `vmware_asa_ds2` or `vmware_asa_ds3` in your ignored `terraform.tfvars` if you want a different placement. Node VM addresses are DHCP leases; **the two kube-vip addresses must be excluded/reserved addresses**, not ordinary DHCP leases.
+Node VM addresses are DHCP leases; **the two kube-vip addresses must be reserved/excluded addresses**, not ordinary DHCP leases.
 
-Terraform applies `Linux - AQ` as a vSphere guest customization specification immediately after each clone. Customization specs run during cloning; they do not retroactively customize already-created VMs. Review the next Terraform plan and deliberately replace the current VMs if they need this customization.
+When configured, Terraform applies the named vSphere guest customization specification immediately after each clone. Customization specifications run during cloning; they do not retroactively customize existing VMs.
 
 ## Required decisions before applying
 
-1. Reserve two unused addresses on `VM Network` and add internal DNS:
-   - API VIP → `10.227.95.101` (K3s `:6443`)
-   - ingress VIP → `10.227.96.101`, with `aq-rancher.aqtech.dev` pointing to it (HTTPS)
-   - Both VIPs are in `VM Network` (`10.227.0.0/16`) and must remain reachable at Layer 2 from the VM NIC used by kube-vip. ARP-mode kube-vip cannot advertise across routed VLANs.
-2. Confirm `aqtech-ubuntu24` has VMware Tools, cloud-init, and the VMware guestinfo datasource enabled. Also confirm its NIC interface name (the example assumes `ens192`).
-3. Provide the existing AQTech private-CA root cert and key on the Ansible control host. The playbook temporarily copies them to the bootstrap node, issues a Rancher ingress certificate for `aq-rancher.aqtech.dev`, creates the `tls-rancher-ingress` and `tls-ca` secrets in `cattle-system`, and removes every temporary node file. Do not use an end-entity Rancher certificate as the CA key.
-4. Confirm the image’s SSH username. This repository is configured for `ansible`.
+1. Reserve two unused addresses on the node port group: an API VIP for K3s `:6443` and an ingress VIP for Rancher `:80/443`. Both must be reachable at Layer 2 from the node NIC; ARP-mode kube-vip cannot advertise across routed VLANs.
+2. Create internal DNS from the Rancher FQDN to the ingress VIP.
+3. Confirm the image has VMware Tools, Python 3, passwordless sudo for the configured SSH user, and—if enabled—cloud-init with VMware guestinfo.
+4. Provide a CA root certificate and key on the Ansible control host. The playbook issues the Rancher certificate and does not retain the CA private key in Kubernetes.
+
+See [the customer configuration guide](docs/customer-configuration.md) for every customer-owned variable and image prerequisite.
 
 ### Local lab CA
 
@@ -35,12 +34,12 @@ For a disposable local test, create a dedicated CA on the Ansible control host. 
 
 ```bash
 install -d -m 700 ~/.config/rancher
-openssl genrsa -out ~/.config/rancher/aqtech-root-ca.key 4096
+openssl genrsa -out ~/.config/rancher/rancher-root-ca.key 4096
 openssl req -x509 -new -sha256 -days 3650 \
-  -key ~/.config/rancher/aqtech-root-ca.key \
-  -out ~/.config/rancher/aqtech-root-ca.crt \
-  -subj "/CN=AQTech Rancher Lab CA"
-chmod 600 ~/.config/rancher/aqtech-root-ca.key
+  -key ~/.config/rancher/rancher-root-ca.key \
+  -out ~/.config/rancher/rancher-root-ca.crt \
+  -subj "/CN=Rancher Lab CA"
+chmod 600 ~/.config/rancher/rancher-root-ca.key
 ```
 
 The playbook creates `cattle-system` before creating its TLS secrets, then reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
@@ -61,7 +60,7 @@ terraform -chdir=terraform apply
 ./scripts/render-inventory.sh
 
 cp ansible/inventory/group_vars/all.yml.example ansible/inventory/group_vars/all.yml
-# Edit VIPs, NIC interface, and local CA file paths.
+# Edit VIPs, network prefix, FQDN, NIC interface, and local CA file paths.
 ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 ```
@@ -72,9 +71,9 @@ The K3s version is pinned to `v1.31.6+k3s1`, which is compatible with the Ranche
 
 ### vCenter TLS
 
-The Terraform provider verifies the vCenter certificate by default. Add the AQTech/TierPoint CA certificate to the operating system trust store on the Terraform control host before running `plan`. For a short-lived lab test only, set `vsphere_allow_unverified_ssl = true` in the ignored `terraform/terraform.tfvars`; do not use that setting for the production deployment.
+The Terraform provider verifies the vCenter certificate by default. Add the customer's vCenter CA certificate to the operating system trust store on the Terraform control host before running `plan`. For a short-lived lab test only, set `vsphere_allow_unverified_ssl = true` in the ignored `terraform/terraform.tfvars`; do not use that setting for a production deployment.
 
-Validate the endpoint with `curl --noproxy '*' --cacert <your-root-ca.crt> --resolve aq-rancher.aqtech.dev:443:10.227.96.101 https://aq-rancher.aqtech.dev/ping`; it should return `pong`. The `--resolve` option permits validation before DNS has been published. Sign in at `https://aq-rancher.aqtech.dev` using the Rancher bootstrap password shown by `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'`.
+Validate the endpoint with `curl --noproxy '*' --cacert <your-root-ca.crt> --resolve <rancher-fqdn>:443:<ingress-vip> https://<rancher-fqdn>/ping`; it should return `pong`. The `--resolve` option permits validation before DNS has been published. Sign in at `https://<rancher-fqdn>` using the Rancher bootstrap password shown by `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'`.
 
 ## Terraform Cloud, after local acceptance
 

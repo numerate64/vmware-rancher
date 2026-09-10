@@ -11,6 +11,16 @@ nodes_json="$(terraform -chdir="$terraform_dir" output -json k3s_nodes)" || {
   exit 1
 }
 
+ssh_user="$(terraform -chdir="$terraform_dir" output -raw ssh_user)" || {
+  echo "Terraform output ssh_user is unavailable. Run a successful terraform apply first." >&2
+  exit 1
+}
+
+[[ "$ssh_user" =~ ^[a-z_][a-z0-9_-]*$ ]] || {
+  echo "Terraform output ssh_user must be a valid Linux username." >&2
+  exit 1
+}
+
 printf '%s\n' "$nodes_json" | jq -e '
   type == "array" and length == 3 and all(.[]; (.name | type == "string") and (.ip | type == "string") and (.ip | length > 0))
 ' >/dev/null || {
@@ -25,7 +35,9 @@ trap 'rm -f "$temp_file"' EXIT
   cat <<'YAML'
 all:
   vars:
-    ansible_user: ansible
+YAML
+  printf '    ansible_user: %s\n' "$ssh_user"
+  cat <<'YAML'
     ansible_python_interpreter: /usr/bin/python3
   children:
     k3s_servers:

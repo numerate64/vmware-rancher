@@ -72,8 +72,8 @@
     group: root
     mode: "0600"
   loop:
-    - { src: "{{ internal_ca_cert_path }}", dest: /run/aqtech-root-ca.crt }
-    - { src: "{{ internal_ca_key_path }}", dest: /run/aqtech-root-ca.key }
+    - { src: "{{ internal_ca_cert_path }}", dest: /run/rancher-root-ca.crt }
+    - { src: "{{ internal_ca_key_path }}", dest: /run/rancher-root-ca.key }
   no_log: true
 
 - name: Create the Rancher private-CA ingress certificate and Kubernetes secrets
@@ -86,8 +86,8 @@
       -addext 'subjectAltName=DNS:{{ rancher_hostname }}'
     openssl x509 -req -sha256 -days 825 \
       -in /run/rancher-ingress.csr \
-      -CA /run/aqtech-root-ca.crt \
-      -CAkey /run/aqtech-root-ca.key \
+      -CA /run/rancher-root-ca.crt \
+      -CAkey /run/rancher-root-ca.key \
       -CAcreateserial \
       -out /run/rancher-ingress.crt \
       -copy_extensions copy
@@ -95,7 +95,7 @@
       --cert=/run/rancher-ingress.crt --key=/run/rancher-ingress.key \
       --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
     /usr/local/bin/k3s kubectl -n cattle-system create secret generic tls-ca \
-      --from-file=cacerts.pem=/run/aqtech-root-ca.crt \
+      --from-file=cacerts.pem=/run/rancher-root-ca.crt \
       --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
   args: { executable: /bin/bash }
   no_log: true
@@ -105,12 +105,12 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - /run/aqtech-root-ca.crt
-    - /run/aqtech-root-ca.key
+    - /run/rancher-root-ca.crt
+    - /run/rancher-root-ca.key
     - /run/rancher-ingress.key
     - /run/rancher-ingress.csr
     - /run/rancher-ingress.crt
-    - /run/aqtech-root-ca.srl
+    - /run/rancher-root-ca.srl
   no_log: true
 
 - name: Install ingress-nginx with kube-vip LoadBalancer address

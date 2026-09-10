@@ -1,17 +1,32 @@
-# Keep the real terraform.tfvars outside Git. Prefer TF_VAR_vsphere_user and
-# TF_VAR_vsphere_password environment variables or Terraform Cloud variable sets.
-vsphere_server       = "hci-vcenter.aqtech.dev"
-datacenter_name      = "TierPoint"
-compute_cluster_name = "DELL"
-datastore_name       = "vmware_asa_ds1" # Change to vmware_asa_ds2 or vmware_asa_ds3 as needed.
-network_name         = "VM Network"
-vm_folder            = "Rancher"
-content_library_name = "aqtech-images"
-content_library_item_name = "aqtech-ubuntu24"
-customization_spec_name = "Linux - AQ"
+# Copy to terraform.tfvars, which is ignored by Git. Provide vSphere credentials
+# through TF_VAR_vsphere_user / TF_VAR_vsphere_password or Terraform Cloud; never
+# save credentials in this file.
 
-cluster_name       = "rancher-prod"
-num_cpus           = 4
-memory_mb          = 16384
-disk_gb            = 100
-ssh_username       = "ansible"
+# vSphere placement and source image.
+vsphere_server               = "vcenter.example.internal"
+vsphere_allow_unverified_ssl = false # Set true only for a short-lived lab with a self-signed vCenter certificate.
+datacenter_name              = "Example-Datacenter"
+compute_cluster_name         = "Example-Cluster"
+datastore_name               = "Example-Datastore"
+network_name                 = "Example-Port-Group"
+vm_folder                    = "Rancher"
+content_library_name         = "Example-Content-Library"
+content_library_item_name    = "ubuntu-24-04"
+content_library_item_type    = "ovf" # Valid values: ovf, vm-template.
+
+# Set this to an existing customization specification, or leave blank to skip
+# vSphere guest customization. Confirm that its guest OS settings match the image.
+customization_spec_name = ""
+
+# VM sizing and image access. node_count is intentionally fixed at three.
+cluster_name = "rancher-prod"
+num_cpus     = 4
+memory_mb    = 16384
+disk_gb      = 100
+ssh_username = "ansible"
+guest_id     = "ubuntu64Guest"
+scsi_type    = "pvscsi"
+
+# Leave enabled when the image supports the VMware guestinfo cloud-init datasource.
+cloud_init_enabled = true
+# additional_cloud_init = ""

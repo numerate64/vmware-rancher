@@ -11,4 +11,4 @@ terraform {
 }
 ```
 
-Set `vsphere_user` and `vsphere_password` as sensitive variables in Terraform Cloud. The image supplies SSH access for the `ansible` user, so no SSH key material is required as a Terraform Cloud variable.
+Set `vsphere_user` and `vsphere_password` as sensitive variables in Terraform Cloud. The customer image supplies SSH access for the `ssh_username` configured in `terraform.tfvars`, so no SSH key material is required as a Terraform Cloud variable.

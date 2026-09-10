@@ -1,6 +1,6 @@
 variable "vsphere_server" {
-  type    = string
-  default = "hci-vcenter.aqtech.dev"
+  type        = string
+  description = "vCenter FQDN or IP address."
 }
 variable "vsphere_user" {
   type      = string
@@ -16,36 +16,45 @@ variable "vsphere_allow_unverified_ssl" {
 }
 
 variable "datacenter_name" {
-  type    = string
-  default = "TierPoint"
+  type        = string
+  description = "Name of the vSphere datacenter containing the target resources."
 }
 variable "compute_cluster_name" {
-  type    = string
-  default = "DELL"
+  type        = string
+  description = "Name of the vSphere compute cluster."
 }
 variable "datastore_name" {
-  type    = string
-  default = "vmware_asa_ds1"
+  type        = string
+  description = "Name of the datastore for the Rancher VM disks."
 }
 variable "network_name" {
-  type    = string
-  default = "VM Network"
+  type        = string
+  description = "Name of the vSphere port group connected to all K3s nodes and VIPs."
 }
 variable "vm_folder" {
-  type    = string
-  default = "Rancher"
+  type        = string
+  description = "Existing vSphere VM folder path for the Rancher nodes."
 }
 variable "content_library_name" {
-  type    = string
-  default = "aqtech-images"
+  type        = string
+  description = "Name of the vSphere Content Library containing the base image."
 }
 variable "content_library_item_name" {
-  type    = string
-  default = "aqtech-ubuntu24"
+  type        = string
+  description = "Name of the Content Library item used as the VM source."
+}
+variable "content_library_item_type" {
+  type        = string
+  default     = "ovf"
+  description = "Content Library item type: ovf or vm-template."
+  validation {
+    condition     = contains(["ovf", "vm-template"], var.content_library_item_type)
+    error_message = "content_library_item_type must be ovf or vm-template."
+  }
 }
 variable "customization_spec_name" {
   type        = string
-  default     = "Linux - AQ"
+  default     = ""
   description = "Name of the existing vSphere guest customization specification applied after each VM clone."
 }
 variable "customization_spec_timeout_minutes" {
@@ -55,8 +64,9 @@ variable "customization_spec_timeout_minutes" {
 }
 
 variable "cluster_name" {
-  type    = string
-  default = "rancher-prod"
+  type        = string
+  default     = "rancher-prod"
+  description = "Prefix for the three VM names, for example rancher-prod-01 through rancher-prod-03."
 }
 variable "node_count" {
   type        = number
@@ -89,8 +99,9 @@ variable "scsi_type" {
 }
 
 variable "ssh_username" {
-  type    = string
-  default = "ansible"
+  type        = string
+  default     = "ansible"
+  description = "Existing SSH user baked into the source image, used by Ansible after provisioning."
 }
 variable "cloud_init_enabled" {
   type    = bool

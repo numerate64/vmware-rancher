@@ -16,7 +16,7 @@ data "vsphere_content_library" "library" { name = var.content_library_name }
 data "vsphere_content_library_item" "ubuntu" {
   name       = var.content_library_item_name
   library_id = data.vsphere_content_library.library.id
-  type       = "ovf"
+  type       = var.content_library_item_type
 }
 
 locals {
@@ -44,9 +44,12 @@ resource "vsphere_virtual_machine" "k3s_server" {
   clone {
     template_uuid = data.vsphere_content_library_item.ubuntu.id
 
-    customization_spec {
-      id      = var.customization_spec_name
-      timeout = var.customization_spec_timeout_minutes
+    dynamic "customization_spec" {
+      for_each = var.customization_spec_name == "" ? [] : [var.customization_spec_name]
+      content {
+        id      = customization_spec.value
+        timeout = var.customization_spec_timeout_minutes
+      }
     }
   }
 
