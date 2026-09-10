@@ -24,10 +24,26 @@ Terraform applies `Linux - AQ` as a vSphere guest customization specification im
 1. Reserve two unused addresses on `VM Network` and add internal DNS:
    - API VIP → `10.227.95.101` (K3s `:6443`)
    - ingress VIP → `10.227.96.101`, with `aq-rancher.aqtech.dev` pointing to it (HTTPS)
-   - Both VIPs must be reachable at Layer 2 from the VM NIC used by kube-vip. These IPs appear to be in separate subnets, so confirm `VM Network` spans both ranges at Layer 2—or choose VIPs in the nodes' DHCP subnet. ARP-mode kube-vip cannot advertise across routed VLANs.
+   - Both VIPs are in `VM Network` (`10.227.0.0/16`) and must remain reachable at Layer 2 from the VM NIC used by kube-vip. ARP-mode kube-vip cannot advertise across routed VLANs.
 2. Confirm `aqtech-ubuntu24` has VMware Tools, cloud-init, and the VMware guestinfo datasource enabled. Also confirm its NIC interface name (the example assumes `ens192`).
-3. Provide the existing AQTech private-CA root cert and key on the Ansible control host. They are temporarily copied to the bootstrap node to create the cert-manager issuer, then removed. Do not use an end-entity Rancher cert as the CA key.
+3. Provide the existing AQTech private-CA root cert and key on the Ansible control host. The playbook temporarily copies them to the bootstrap node, issues a Rancher ingress certificate for `aq-rancher.aqtech.dev`, creates the `tls-rancher-ingress` and `tls-ca` secrets in `cattle-system`, and removes every temporary node file. Do not use an end-entity Rancher certificate as the CA key.
 4. Confirm the image’s SSH username. This repository is configured for `ansible`.
+
+### Local lab CA
+
+For a disposable local test, create a dedicated CA on the Ansible control host. This is not a replacement for the organization's production PKI. Keep the key outside the repository and distribute the resulting certificate to clients that need to trust Rancher.
+
+```bash
+install -d -m 700 ~/.config/rancher
+openssl genrsa -out ~/.config/rancher/aqtech-root-ca.key 4096
+openssl req -x509 -new -sha256 -days 3650 \
+  -key ~/.config/rancher/aqtech-root-ca.key \
+  -out ~/.config/rancher/aqtech-root-ca.crt \
+  -subj "/CN=AQTech Rancher Lab CA"
+chmod 600 ~/.config/rancher/aqtech-root-ca.key
+```
+
+The playbook reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
 
 ## Local test workflow
 
@@ -50,11 +66,13 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 ```
 
+The K3s version is pinned to `v1.31.6+k3s1`, which is compatible with the Rancher `2.10.2` chart used here. Do not let an existing cluster silently remain on a newer K3s release: reinstall the disposable test cluster at the pinned version before installing Rancher.
+
 ### vCenter TLS
 
 The Terraform provider verifies the vCenter certificate by default. Add the AQTech/TierPoint CA certificate to the operating system trust store on the Terraform control host before running `plan`. For a short-lived lab test only, set `vsphere_allow_unverified_ssl = true` in the ignored `terraform/terraform.tfvars`; do not use that setting for the production deployment.
 
-Validate the endpoint with `curl --cacert <your-root-ca.crt> https://aq-rancher.aqtech.dev/ping` and sign in at `https://aq-rancher.aqtech.dev` using the Rancher bootstrap password shown by `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'`.
+Validate the endpoint with `curl --noproxy '*' --cacert <your-root-ca.crt> --resolve aq-rancher.aqtech.dev:443:10.227.96.101 https://aq-rancher.aqtech.dev/ping`; it should return `pong`. The `--resolve` option permits validation before DNS has been published. Sign in at `https://aq-rancher.aqtech.dev` using the Rancher bootstrap password shown by `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'`.
 
 ## Terraform Cloud, after local acceptance
 

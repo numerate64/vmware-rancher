@@ -37,6 +37,7 @@
   changed_when: false
   loop:
     - { name: jetstack, url: https://charts.jetstack.io }
+    - { name: ingress-nginx, url: https://kubernetes.github.io/ingress-nginx }
     - { name: rancher-stable, url: https://releases.rancher.com/server-charts/stable }
 
 - name: Update Helm repositories
@@ -49,6 +50,8 @@
     --namespace cert-manager --create-namespace
     --version {{ cert_manager_version }} --set crds.enabled=true
   changed_when: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for cert-manager deployment
   ansible.builtin.command: /usr/local/bin/k3s kubectl -n cert-manager rollout status deployment/cert-manager --timeout=180s
@@ -66,36 +69,58 @@
     - { src: "{{ internal_ca_key_path }}", dest: /run/aqtech-root-ca.key }
   no_log: true
 
-- name: Create or update the internal CA secret
-  ansible.builtin.shell: >-
-    /usr/local/bin/k3s kubectl -n cert-manager create secret tls aqtech-internal-ca
-    --cert=/run/aqtech-root-ca.crt --key=/run/aqtech-root-ca.key
-    --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+- name: Create the Rancher private-CA ingress certificate and Kubernetes secrets
+  ansible.builtin.shell: |
+    set -euo pipefail
+    openssl req -new -newkey rsa:2048 -nodes \
+      -keyout /run/rancher-ingress.key \
+      -out /run/rancher-ingress.csr \
+      -subj '/CN={{ rancher_hostname }}' \
+      -addext 'subjectAltName=DNS:{{ rancher_hostname }}'
+    openssl x509 -req -sha256 -days 825 \
+      -in /run/rancher-ingress.csr \
+      -CA /run/aqtech-root-ca.crt \
+      -CAkey /run/aqtech-root-ca.key \
+      -CAcreateserial \
+      -out /run/rancher-ingress.crt \
+      -copy_extensions copy
+    /usr/local/bin/k3s kubectl -n cattle-system create secret tls tls-rancher-ingress \
+      --cert=/run/rancher-ingress.crt --key=/run/rancher-ingress.key \
+      --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+    /usr/local/bin/k3s kubectl -n cattle-system create secret generic tls-ca \
+      --from-file=cacerts.pem=/run/aqtech-root-ca.crt \
+      --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
   args: { executable: /bin/bash }
   no_log: true
 
-- name: Remove temporary CA files from bootstrap host
+- name: Remove temporary private CA and ingress certificate files from bootstrap host
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  loop: [/run/aqtech-root-ca.crt, /run/aqtech-root-ca.key]
+  loop:
+    - /run/aqtech-root-ca.crt
+    - /run/aqtech-root-ca.key
+    - /run/rancher-ingress.key
+    - /run/rancher-ingress.csr
+    - /run/rancher-ingress.crt
+    - /run/aqtech-root-ca.srl
   no_log: true
-
-- name: Create ClusterIssuer for Rancher certificates
-  ansible.builtin.template:
-    src: cluster-issuer.yaml.j2
-    dest: /var/lib/rancher/k3s/server/manifests/rancher-cluster-issuer.yaml
-    owner: root
-    group: root
-    mode: "0644"
 
 - name: Install ingress-nginx with kube-vip LoadBalancer address
   ansible.builtin.command: >-
-    helm upgrade --install ingress-nginx oci://ghcr.io/nginx/charts/ingress-nginx
+    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
     --namespace ingress-nginx --create-namespace
     --set controller.service.loadBalancerClass=kube-vip.io/kube-vip-class
     --set controller.service.loadBalancerIP={{ rancher_ingress_address }}
   changed_when: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+- name: Wait for ingress-nginx controller and admission webhook
+  ansible.builtin.command: >-
+    /usr/local/bin/k3s kubectl -n ingress-nginx rollout status
+    deployment/ingress-nginx-controller --timeout=300s
+  changed_when: false
 
 - name: Install Rancher HA
   ansible.builtin.command: >-
@@ -104,9 +129,12 @@
     --version {{ rancher_chart_version }}
     --set hostname={{ rancher_hostname }}
     --set replicas={{ rancher_replicas }}
-    --set ingress.tls.source=rancher
+    --set ingress.ingressClassName=nginx
+    --set ingress.tls.source=secret
     --set privateCA=true
   changed_when: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
 - name: Wait for Rancher rollout
   ansible.builtin.command: /usr/local/bin/k3s kubectl -n cattle-system rollout status deployment/rancher --timeout=600s
