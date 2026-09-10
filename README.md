@@ -46,6 +46,41 @@ chmod 600 ~/.config/rancher/rancher-root-ca.key
 
 The playbook creates `cattle-system` before creating its TLS secrets, then reads these files, temporarily copies them to the bootstrap node to issue the Rancher ingress certificate, creates only the required Kubernetes TLS/CA secrets, assigns the Rancher Ingress to the `nginx` IngressClass, and removes the temporary node copies. The CA private key is not retained in Kubernetes.
 
+## Ansible control-host prerequisites
+
+Use a supported Linux control host with at least 2 vCPU, 4 GiB RAM, and 20 GiB free disk. Ubuntu 24.04 LTS is the tested baseline; another current Linux distribution is suitable if it provides the tools below.
+
+### Required software
+
+- Terraform `>= 1.6.0`
+- Ansible with `ansible-playbook` and `ansible-galaxy`
+- `jq`, OpenSSH client, Git, `curl`, `ca-certificates`, and `openssl`
+- Python 3 (required by Ansible and common collection dependencies)
+
+For Ubuntu 24.04, install the operating-system packages with:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ansible jq git openssh-client curl ca-certificates openssl python3
+```
+
+Install Terraform from [HashiCorp's official Linux instructions](https://developer.hashicorp.com/terraform/install) and verify it meets the required version with `terraform version`.
+
+### Access, credentials, and network
+
+- The local Linux user needs `sudo` only to install the prerequisite packages and trust a private vCenter CA. It does **not** need root to run Terraform or Ansible.
+- It must reach vCenter on TCP `443` and each created VM on TCP `22`.
+- It needs outbound HTTPS access to Terraform Registry/provider downloads, Ansible Galaxy, and GitHub when installing dependencies. The K3s nodes also need outbound HTTPS access to K3s, Helm-chart, and container-image sources. This repository does not currently provide an air-gapped mirror workflow.
+- Provide vCenter credentials as `TF_VAR_vsphere_user` and `TF_VAR_vsphere_password`, or later as sensitive Terraform Cloud variables. Never put them in Git or `terraform.tfvars`.
+- Store the private CA certificate and key only on the control host, at the paths configured in `ansible/inventory/group_vars/all.yml`. Restrict the key with `chmod 600 <path-to-ca-key>`.
+- The image's matching SSH private key remains on the control host, outside this repository. It must authenticate as `ssh_username`; that account needs passwordless `sudo` on each Rancher node.
+
+The supplied SSH configuration uses `StrictHostKeyChecking=accept-new`: new VM host keys are recorded automatically, while changed known keys still fail safely. Install the required Ansible collection before the first deployment:
+
+```bash
+ansible-galaxy collection install -r ansible/requirements.yml
+```
+
 ## Local test workflow
 
 ```bash
