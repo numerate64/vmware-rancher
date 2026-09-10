@@ -13,7 +13,7 @@ test -f "$tfvars_file" || {
   exit 1
 }
 
-if rg -q '^[[:space:]]*ssh_public_key_path[[:space:]]*=' "$tfvars_file"; then
+if grep -Eq '^[[:space:]]*ssh_public_key_path[[:space:]]*=' "$tfvars_file"; then
   echo "Remove obsolete ssh_public_key_path from terraform/terraform.tfvars; the image supplies SSH access." >&2
   exit 1
 fi
