@@ -16,11 +16,9 @@ Local-first infrastructure-as-code for a three-node, embedded-etcd K3s cluster r
 
 `vmware_asa_ds1` is the default datastore. Set `datastore_name` to `vmware_asa_ds2` or `vmware_asa_ds3` in your ignored `terraform.tfvars` if you want a different placement. Node VM addresses are DHCP leases; **the two kube-vip addresses must be excluded/reserved addresses**, not ordinary DHCP leases.
 
-## Private-key location
+## SSH private-key location
 
-The public key has been retrieved from `https://github.com/k-laughman.keys` into [`config/k-laughman.keys`](config/k-laughman.keys). Terraform puts only that public key into the VMs through cloud-init.
-
-Keep the matching private key on the Ansible control machine, outside this repository. The default location is:
+The `aqtech-ubuntu24` image already contains the matching public SSH key for the `ansible` user. Keep its private key on the Ansible control machine, outside this repository. The default location is:
 
 ```text
 ~/.ssh/aqtech-rancher_ed25519
@@ -63,7 +61,7 @@ Validate the endpoint with `curl --cacert <your-root-ca.crt> https://aq-rancher.
 
 ## Terraform Cloud, after local acceptance
 
-Keep the code as-is and add a `cloud` block only when you create the organization/workspace. Put `vsphere_user` and `vsphere_password` into Terraform Cloud as sensitive workspace variables. Keep `ssh_public_key_path` local or replace it with a non-secret `ssh_public_key` variable before remote execution—the path is meaningful only on the machine running Terraform.
+Keep the code as-is and add a `cloud` block only when you create the organization/workspace. Put `vsphere_user` and `vsphere_password` into Terraform Cloud as sensitive workspace variables. The image supplies SSH access, so the configuration is suitable for remote execution without a key-file dependency.
 
 ## Important operational notes
 

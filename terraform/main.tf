@@ -21,7 +21,6 @@ data "vsphere_content_library_item" "ubuntu" {
 
 locals {
   node_names = [for number in range(1, var.node_count + 1) : format("%s-%02d", var.cluster_name, number)]
-  public_key = trimspace(file(pathexpand(var.ssh_public_key_path)))
 }
 
 resource "vsphere_virtual_machine" "k3s_server" {
@@ -50,7 +49,6 @@ resource "vsphere_virtual_machine" "k3s_server" {
     "guestinfo.userdata" = base64encode(templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
       hostname              = each.value
       ssh_username          = var.ssh_username
-      public_key            = local.public_key
       additional_cloud_init = var.additional_cloud_init
     }))
     "guestinfo.userdata.encoding" = "base64"

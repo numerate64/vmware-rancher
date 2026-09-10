@@ -11,4 +11,4 @@ terraform {
 }
 ```
 
-Set `vsphere_user` and `vsphere_password` as sensitive variables in Terraform Cloud. Do not store a private SSH key there. Because the current design reads a public-key file during Terraform execution, convert `ssh_public_key_path` to a plain non-sensitive `ssh_public_key` variable for the remote workspace, or use a workspace-safe public-key artifact.
+Set `vsphere_user` and `vsphere_password` as sensitive variables in Terraform Cloud. The image supplies SSH access for the `ansible` user, so no SSH key material is required as a Terraform Cloud variable.

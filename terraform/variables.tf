@@ -82,10 +82,6 @@ variable "ssh_username" {
   type    = string
   default = "ansible"
 }
-variable "ssh_public_key_path" {
-  type        = string
-  description = "Path to the public key installed by cloud-init. Never point this at a private key."
-}
 variable "cloud_init_enabled" {
   type    = bool
   default = true

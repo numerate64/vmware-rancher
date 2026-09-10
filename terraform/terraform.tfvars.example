@@ -14,5 +14,3 @@ num_cpus           = 4
 memory_mb          = 16384
 disk_gb            = 100
 ssh_username       = "ansible"
-# This repository includes the public key retrieved from github.com/k-laughman.keys.
-ssh_public_key_path = "../config/k-laughman.keys"
