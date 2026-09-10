@@ -96,10 +96,15 @@ terraform -chdir=terraform apply
 ./scripts/render-inventory.sh
 
 cp ansible/inventory/group_vars/all.yml.example ansible/inventory/group_vars/all.yml
-# Edit VIPs, network prefix, FQDN, NIC interface, and local CA file paths.
+# REQUIRED: Edit all.yml before running Ansible. The example contains the
+# non-routable placeholders 192.0.2.101, 192.0.2.102, and rancher.example.internal.
+# Set the API VIP, ingress VIP, matching subnet/cidr, Rancher FQDN, NIC interface,
+# and local CA file paths for the target environment.
 ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 ```
+
+**Do not run the playbook with the copied `all.yml` unchanged.** The placeholder API VIP becomes the K3s server endpoint for nodes 2 and 3; if it is not replaced with the reserved API VIP on the node network, those nodes cannot join the cluster.
 
 The included `ansible.cfg` uses SSH `StrictHostKeyChecking=accept-new`: each freshly cloned VM's first host key is automatically recorded in `~/.ssh/known_hosts`, while a subsequently changed key still stops the run for review. This avoids interactive prompts during first deployment without globally disabling SSH host-key verification.
 
