@@ -16,16 +16,6 @@ Local-first infrastructure-as-code for a three-node, embedded-etcd K3s cluster r
 
 `vmware_asa_ds1` is the default datastore. Set `datastore_name` to `vmware_asa_ds2` or `vmware_asa_ds3` in your ignored `terraform.tfvars` if you want a different placement. Node VM addresses are DHCP leases; **the two kube-vip addresses must be excluded/reserved addresses**, not ordinary DHCP leases.
 
-## SSH private-key location
-
-The `aqtech-ubuntu24` image already contains the matching public SSH key for the `ansible` user. Keep its private key on the Ansible control machine, outside this repository. The default location is:
-
-```text
-~/.ssh/aqtech-rancher_ed25519
-```
-
-Use `chmod 600 ~/.ssh/aqtech-rancher_ed25519`. If the matching private key has another name, update the generated `ansible/inventory/hosts.yml` (which is ignored by Git). Never place a private key in `terraform.tfvars`, Git, Terraform Cloud variables, or this repository.
-
 ## Required decisions before applying
 
 1. Reserve two unused addresses on `VM Network` and add internal DNS:
