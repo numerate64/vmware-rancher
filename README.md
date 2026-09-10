@@ -47,6 +47,10 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 ```
 
+### vCenter TLS
+
+The Terraform provider verifies the vCenter certificate by default. Add the AQTech/TierPoint CA certificate to the operating system trust store on the Terraform control host before running `plan`. For a short-lived lab test only, set `vsphere_allow_unverified_ssl = true` in the ignored `terraform/terraform.tfvars`; do not use that setting for the production deployment.
+
 Validate the endpoint with `curl --cacert <your-root-ca.crt> https://aq-rancher.aqtech.dev/ping` and sign in at `https://aq-rancher.aqtech.dev` using the Rancher bootstrap password shown by `kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'`.
 
 ## Terraform Cloud, after local acceptance
