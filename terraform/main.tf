@@ -11,11 +11,7 @@ data "vsphere_network" "network" {
   name          = var.network_name
   datacenter_id = data.vsphere_datacenter.dc.id
 }
-data "vsphere_folder" "folder" {
-  path          = var.vm_folder
-  type          = "vm"
-  datacenter_id = data.vsphere_datacenter.dc.id
-}
+data "vsphere_folder" "folder" { path = var.vm_folder }
 data "vsphere_content_library" "library" { name = var.content_library_name }
 data "vsphere_content_library_item" "ubuntu" {
   name       = var.content_library_item_name
@@ -41,7 +37,10 @@ resource "vsphere_virtual_machine" "k3s_server" {
   scsi_type        = var.scsi_type
 
   network_interface { network_id = data.vsphere_network.network.id }
-  disk { label = "disk0", size = var.disk_gb }
+  disk {
+    label = "disk0"
+    size  = var.disk_gb
+  }
 
   clone { template_uuid = data.vsphere_content_library_item.ubuntu.id }
 
