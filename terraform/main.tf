@@ -4,7 +4,13 @@ data "vsphere_compute_cluster" "cluster" {
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 data "vsphere_datastore" "datastore" {
+  count         = var.datastore_name != "" ? 1 : 0
   name          = var.datastore_name
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+data "vsphere_datastore_cluster" "datastore_cluster" {
+  count         = var.datastore_cluster_name != "" ? 1 : 0
+  name          = var.datastore_cluster_name
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 data "vsphere_network" "network" {
@@ -26,14 +32,15 @@ locals {
 resource "vsphere_virtual_machine" "k3s_server" {
   for_each = toset(local.node_names)
 
-  name             = each.value
-  folder           = data.vsphere_folder.folder.path
-  resource_pool_id = data.vsphere_compute_cluster.cluster.resource_pool_id
-  datastore_id     = data.vsphere_datastore.datastore.id
-  num_cpus         = var.num_cpus
-  memory           = var.memory_mb
-  guest_id         = var.guest_id
-  scsi_type        = var.scsi_type
+  name                 = each.value
+  folder               = data.vsphere_folder.folder.path
+  resource_pool_id     = data.vsphere_compute_cluster.cluster.resource_pool_id
+  datastore_id         = var.datastore_name != "" ? data.vsphere_datastore.datastore[0].id : null
+  datastore_cluster_id = var.datastore_cluster_name != "" ? data.vsphere_datastore_cluster.datastore_cluster[0].id : null
+  num_cpus             = var.num_cpus
+  memory               = var.memory_mb
+  guest_id             = var.guest_id
+  scsi_type            = var.scsi_type
 
   network_interface { network_id = data.vsphere_network.network.id }
   disk {
@@ -66,4 +73,11 @@ resource "vsphere_virtual_machine" "k3s_server" {
 
   wait_for_guest_net_timeout = 10
   wait_for_guest_ip_timeout  = 10
+
+  lifecycle {
+    precondition {
+      condition     = (var.datastore_name != "") != (var.datastore_cluster_name != "")
+      error_message = "Set exactly one of datastore_name or datastore_cluster_name."
+    }
+  }
 }

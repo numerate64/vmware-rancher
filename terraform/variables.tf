@@ -25,7 +25,13 @@ variable "compute_cluster_name" {
 }
 variable "datastore_name" {
   type        = string
-  description = "Name of the datastore for the Rancher VM disks."
+  default     = ""
+  description = "Name of a single datastore for Rancher VM disks. Set exactly one of datastore_name or datastore_cluster_name."
+}
+variable "datastore_cluster_name" {
+  type        = string
+  default     = ""
+  description = "Name of a datastore cluster for Storage DRS placement. Set exactly one of datastore_name or datastore_cluster_name."
 }
 variable "network_name" {
   type        = string

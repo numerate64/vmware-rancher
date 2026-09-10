@@ -16,7 +16,8 @@ Edit `terraform/terraform.tfvars`.
 | Setting | Customer supplies | Notes |
 |---|---|---|
 | `vsphere_server` | vCenter FQDN/IP | The provider validates TLS by default. |
-| `datacenter_name`, `compute_cluster_name`, `datastore_name` | Placement targets | Names must exactly match vSphere. |
+| `datacenter_name`, `compute_cluster_name` | Placement targets | Names must exactly match vSphere. |
+| `datastore_name` **or** `datastore_cluster_name` | Storage placement | Set exactly one. Use `datastore_cluster_name` when Storage DRS should select a member datastore. |
 | `network_name` | Node port group | Every node and both kube-vip addresses must be on this Layer-2 network. |
 | `vm_folder` | Existing VM folder | Terraform does not create it. |
 | `content_library_name`, `content_library_item_name`, `content_library_item_type` | Content Library source | Use `ovf` or `vm-template`. |

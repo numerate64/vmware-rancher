@@ -17,6 +17,8 @@ Local-first infrastructure-as-code for a three-node, embedded-etcd K3s cluster r
 
 Node VM addresses are DHCP leases; **the two kube-vip addresses must be reserved/excluded addresses**, not ordinary DHCP leases.
 
+For VM storage, set exactly one of `datastore_name` (a specific datastore) or `datastore_cluster_name` (a vSphere datastore cluster using Storage DRS) in the ignored `terraform/terraform.tfvars` file.
+
 When configured, Terraform applies the named vSphere guest customization specification immediately after each clone. Customization specifications run during cloning; they do not retroactively customize existing VMs.
 
 ## Required decisions before applying
