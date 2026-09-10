@@ -10,6 +10,14 @@
   no_log: true
   when: k3s_bootstrap
 
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
 - name: Persist cluster token on bootstrap server
   ansible.builtin.copy:
     content: "{{ k3s_token_generated.stdout }}\n"
@@ -28,14 +36,6 @@
   delegate_facts: true
   register: k3s_token_slurp
   no_log: true
-
-- name: Create K3s configuration directory
-  ansible.builtin.file:
-    path: /etc/rancher/k3s
-    state: directory
-    owner: root
-    group: root
-    mode: "0700"
 
 - name: Write K3s server configuration
   ansible.builtin.template:
