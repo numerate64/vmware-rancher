@@ -38,6 +38,8 @@ spec:
             - {name: vip_arp, value: "true"}
             - {name: port, value: "6443"}
             - {name: vip_interface, value: "{{ kube_vip_interface }}"}
+            - {name: vip_subnet, value: "{{ kube_vip_subnet }}"}
+            - {name: vip_cidr, value: "{{ kube_vip_cidr }}"}
             - {name: vip_address, value: "{{ kube_vip_api_address }}"}
             - {name: cp_enable, value: "true"}
             - {name: svc_enable, value: "true"}

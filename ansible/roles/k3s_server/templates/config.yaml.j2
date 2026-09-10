@@ -5,6 +5,8 @@ tls-san:
 disable:
   - traefik
   - servicelb
-{% if not k3s_bootstrap %}
+{% if k3s_bootstrap %}
+cluster-init: true
+{% else %}
 server: "https://{{ kube_vip_api_address }}:6443"
 {% endif %}

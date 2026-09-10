@@ -33,6 +33,21 @@
       vars: { k3s_bootstrap: false }
       when: inventory_hostname != groups['k3s_servers'][0]
 
+- name: Verify the three-node embedded-etcd cluster
+  hosts: k3s_servers[0]
+  become: true
+  tasks:
+    - name: Wait for all K3s servers to become Ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes --no-headers
+      register: k3s_nodes
+      changed_when: false
+      retries: 30
+      delay: 5
+      until:
+        - k3s_nodes.rc == 0
+        - k3s_nodes.stdout_lines | length == groups['k3s_servers'] | length
+        - k3s_nodes.stdout is not search('NotReady')
+
 - name: Install Rancher on the HA cluster
   hosts: k3s_servers[0]
   become: true

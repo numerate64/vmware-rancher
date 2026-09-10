@@ -2,6 +2,8 @@
 # Create matching internal DNS records.
 kube_vip_api_address: "10.227.95.101"
 rancher_ingress_address: "10.227.96.101"
+kube_vip_subnet: "/16" # VM Network is 10.227.0.0/16.
+kube_vip_cidr: "16" # IPv4 prefix used by kube-vip for ARP service advertisements.
 rancher_hostname: "aq-rancher.aqtech.dev"
 k3s_version: "v1.31.6+k3s1" # Review and deliberately update before production.
 kube_vip_interface: "ens192" # Confirm the NIC name on aqtech-ubuntu24.
