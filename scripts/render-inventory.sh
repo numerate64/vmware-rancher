@@ -26,6 +26,7 @@ trap 'rm -f "$temp_file"' EXIT
 all:
   vars:
     ansible_user: ansible
+    ansible_python_interpreter: /usr/bin/python3
   children:
     k3s_servers:
       hosts:
