@@ -66,6 +66,8 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 ```
 
+The included `ansible.cfg` uses SSH `StrictHostKeyChecking=accept-new`: each freshly cloned VM's first host key is automatically recorded in `~/.ssh/known_hosts`, while a subsequently changed key still stops the run for review. This avoids interactive prompts during first deployment without globally disabling SSH host-key verification.
+
 The K3s version is pinned to `v1.31.6+k3s1`, which is compatible with the Rancher `2.10.2` chart used here. Do not let an existing cluster silently remain on a newer K3s release: reinstall the disposable test cluster at the pinned version before installing Rancher.
 
 ### vCenter TLS
