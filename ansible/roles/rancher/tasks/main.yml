@@ -60,9 +60,12 @@
 - name: Require an explicit override for a Rancher chart version change
   ansible.builtin.assert:
     that:
-      - rancher_release.rc != 0 or rancher_installed_chart == 'rancher-' ~ rancher_chart_version or rancher_allow_version_change | bool
+      - >-
+        rancher_release.rc != 0
+        or (rancher_installed_chart | default('')) == 'rancher-' ~ rancher_chart_version
+        or rancher_allow_version_change | bool
     fail_msg: >-
-      Rancher is installed as {{ rancher_installed_chart }} but this playbook is pinned to
+      Rancher is installed as {{ rancher_installed_chart | default('an unknown chart') }} but this playbook is pinned to
       rancher-{{ rancher_chart_version }}. Do not make a direct chart-version jump with site.yml.
       Follow docs/upgrade-existing-cluster.md. Set rancher_allow_version_change=true only for a
       deliberate, documented single-minor upgrade.
