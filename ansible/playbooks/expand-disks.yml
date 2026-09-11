@@ -1,0 +1,70 @@
+---
+# Expands an Ubuntu LVM root filesystem after Terraform/vSphere has enlarged
+# the underlying virtual disk. This must run before site.yml on images whose
+# cloud-init configuration does not grow LVM automatically.
+- name: Expand the Ubuntu root LVM after vSphere disk growth
+  hosts: k3s_servers
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Expand the root LVM partition, physical volume, and filesystem
+      ansible.builtin.raw: |
+        set -euo pipefail
+
+        command -v growpart >/dev/null || {
+          echo 'growpart is required; install cloud-guest-utils on this node first.' >&2
+          exit 1
+        }
+
+        root_lv="$(findmnt -n -o SOURCE --target /)"
+        case "$root_lv" in
+          /dev/mapper/*) ;;
+          *)
+            echo "Unsupported root device: $root_lv. This playbook supports an LVM root filesystem." >&2
+            exit 1
+            ;;
+        esac
+
+        lvm_names="$(lvs --noheadings --separator : -o vg_name,lv_name "$root_lv" | xargs)"
+        root_vg="${lvm_names%%:*}"
+        root_lv_name="${lvm_names#*:}"
+        [ -n "$root_vg" ] && [ -n "$root_lv_name" ] || {
+          echo "Unable to identify the root LVM logical volume: $root_lv" >&2
+          exit 1
+        }
+
+        pv_count="$(pvs --noheadings -o pv_name --select "vg_name=$root_vg" | sed '/^ *$/d' | wc -l)"
+        [ "$pv_count" -eq 1 ] || {
+          echo "Expected one physical volume for root volume group $root_vg; found $pv_count." >&2
+          exit 1
+        }
+        root_pv="$(pvs --noheadings -o pv_name --select "vg_name=$root_vg" | xargs)"
+        parent_disk="$(lsblk -no PKNAME "$root_pv")"
+        partition_number="$(lsblk -no PARTN "$root_pv")"
+        [ -n "$parent_disk" ] && [ -n "$partition_number" ] || {
+          echo "Unable to identify the backing disk and partition for $root_pv" >&2
+          exit 1
+        }
+
+        growpart_output="$(growpart "/dev/$parent_disk" "$partition_number" 2>&1)" || growpart_rc=$?
+        if [ "${growpart_rc:-0}" -ne 0 ] && ! printf '%s' "$growpart_output" | grep -q '^NOCHANGE:'; then
+          printf '%s\n' "$growpart_output" >&2
+          exit "$growpart_rc"
+        fi
+        printf '%s\n' "$growpart_output"
+
+        pvresize "$root_pv"
+        free_extents="$(vgs --noheadings -o vg_free_count "$root_vg" | xargs)"
+        if [ "$free_extents" -gt 0 ]; then
+          lvextend --resizefs -l +100%FREE "/dev/$root_vg/$root_lv_name"
+        else
+          echo "Root logical volume already consumes all free extents in $root_vg."
+        fi
+      args:
+        executable: /bin/bash
+      register: disk_expansion
+      changed_when: disk_expansion.stdout is search('CHANGED:') or disk_expansion.stdout is search('successfully resized')
+
+    - name: Report root filesystem capacity after expansion
+      ansible.builtin.raw: df -h /
+      changed_when: false

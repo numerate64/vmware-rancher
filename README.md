@@ -95,6 +95,10 @@ terraform -chdir=terraform plan
 terraform -chdir=terraform apply
 ./scripts/render-inventory.sh
 
+# Expand the Ubuntu guest's LVM root filesystem to use the virtual disk size.
+# Required when the image does not grow LVM automatically.
+ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/expand-disks.yml
+
 cp ansible/inventory/group_vars/all.yml.example ansible/inventory/group_vars/all.yml
 # REQUIRED: Edit all.yml before running Ansible. The example contains the
 # non-routable placeholders 192.0.2.101, 192.0.2.102, and rancher.example.internal.
@@ -102,6 +106,16 @@ cp ansible/inventory/group_vars/all.yml.example ansible/inventory/group_vars/all
 # and local CA file paths for the target environment.
 ansible-galaxy collection install -r ansible/requirements.yml
 ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
+```
+
+### Guest disk expansion
+
+Terraform resizes the virtual disk, but some Ubuntu templates retain their original small LVM root filesystem. Run `ansible/playbooks/expand-disks.yml` immediately after inventory rendering and before `site.yml`. It discovers the root LVM volume and its backing partition, then expands the partition, physical volume, logical volume, and filesystem. It supports a single-PV LVM root layout, which is the standard Ubuntu 24.04 image layout.
+
+The playbook uses Ansible's `raw` transport so it can still run when an exhausted node cannot create Ansible temporary files. It requires `growpart` from `cloud-guest-utils`; Ubuntu cloud images normally include it. If it is absent, install `cloud-guest-utils` first. Verify each node reports the expected capacity before continuing:
+
+```bash
+ansible -i ansible/inventory/hosts.yml k3s_servers -b -m raw -a 'df -h /'
 ```
 
 **Do not run the playbook with the copied `all.yml` unchanged.** The placeholder API VIP becomes the K3s server endpoint for nodes 2 and 3; if it is not replaced with the reserved API VIP on the node network, those nodes cannot join the cluster.
