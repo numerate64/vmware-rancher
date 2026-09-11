@@ -44,24 +44,27 @@
   ansible.builtin.command: helm repo update
   changed_when: false
 
-- name: Inspect the installed Rancher release
-  ansible.builtin.command: helm status rancher --namespace cattle-system --output json
-  register: rancher_release
+- name: List the installed Rancher release
+  ansible.builtin.command: >-
+    helm list --namespace cattle-system --filter '^rancher$' --output json
+  register: rancher_release_list
   changed_when: false
-  failed_when: false
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
+- name: Parse the installed Rancher release list
+  ansible.builtin.set_fact:
+    rancher_releases: "{{ rancher_release_list.stdout | from_json }}"
+
 - name: Record the installed Rancher chart
   ansible.builtin.set_fact:
-    rancher_installed_chart: "{{ (rancher_release.stdout | from_json).chart }}"
-  when: rancher_release.rc == 0
+    rancher_installed_chart: "{{ (rancher_releases | first | default({})).get('chart', '') }}"
 
 - name: Require an explicit override for a Rancher chart version change
   ansible.builtin.assert:
     that:
       - >-
-        rancher_release.rc != 0
+        rancher_releases | length == 0
         or (rancher_installed_chart | default('')) == 'rancher-' ~ rancher_chart_version
         or rancher_allow_version_change | bool
     fail_msg: >-
