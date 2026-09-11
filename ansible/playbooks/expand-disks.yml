@@ -39,10 +39,17 @@
           exit 1
         }
         root_pv="$(pvs --noheadings -o pv_name --select "vg_name=$root_vg" | xargs)"
-        # --nodeps is essential: without it, lsblk also emits the device-mapper
-        # child of the PV, resulting in a multi-line and invalid growpart target.
-        parent_disk="$(lsblk -dno PKNAME "$root_pv")"
-        partition_number="$(lsblk -dno PARTN "$root_pv")"
+        # Resolve the physical parent and partition from sysfs. lsblk can emit
+        # the device-mapper child of an LVM PV, while --nodeps suppresses
+        # partition metadata on some util-linux versions.
+        root_pv_name="$(basename "$root_pv")"
+        partition_path="/sys/class/block/$root_pv_name/partition"
+        [ -r "$partition_path" ] || {
+          echo "$root_pv is not a disk partition; cannot grow it safely." >&2
+          exit 1
+        }
+        parent_disk="$(basename "$(readlink -f "/sys/class/block/$root_pv_name/..")")"
+        partition_number="$(cat "$partition_path")"
         [ -n "$parent_disk" ] && [ -n "$partition_number" ] || {
           echo "Unable to identify the backing disk and partition for $root_pv" >&2
           exit 1
