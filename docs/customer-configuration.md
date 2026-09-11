@@ -46,10 +46,12 @@ Edit `ansible/inventory/group_vars/all.yml`.
 | `kube_vip_subnet` / `kube_vip_cidr` | Prefix of the node network | They represent the same prefix: `/24` and `24`, for example. |
 | `rancher_hostname` | Rancher FQDN | Create DNS pointing this name to `rancher_ingress_address`. |
 | `kube_vip_interface` | Node NIC name | Examples: `ens192`, `eth0`. Verify with `ip -br address` on the image. |
-| `k3s_version` | Supported K3s release | Keep it compatible with the pinned Rancher chart. |
+| `k3s_version` | Supported K3s release | New deployments default to `v1.36.4+k3s1`; keep it compatible with the pinned Rancher chart. |
 | `internal_ca_cert_path` / `internal_ca_key_path` | Local CA root certificate and key paths | The key stays on the Ansible control host and is never committed. |
 
 The repository uses SSH `StrictHostKeyChecking=accept-new`. First-contact host keys are added automatically; a changed known key remains a hard failure.
+
+The version pins in the example are for new deployments. For an already-running cluster, use the staged procedure in [the upgrade runbook](upgrade-existing-cluster.md); do not replace its version values and rerun `site.yml` as a shortcut.
 
 ## 3. Image prerequisites
 

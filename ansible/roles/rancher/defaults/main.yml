@@ -2,6 +2,7 @@ rancher_hostname: ""
 rancher_ingress_address: ""
 rancher_replicas: 3
 cert_manager_version: "v1.16.3"
-rancher_chart_version: "2.10.2"
+rancher_chart_version: "2.15.1"
+rancher_allow_version_change: false
 internal_ca_cert_path: ""
 internal_ca_key_path: ""

@@ -5,8 +5,12 @@ rancher_ingress_address: "192.0.2.102"
 kube_vip_subnet: "/24" # Slash-prefixed network prefix, for example /24.
 kube_vip_cidr: "24" # Numeric form of the same prefix, for example 24.
 rancher_hostname: "rancher.example.internal"
-k3s_version: "v1.31.6+k3s1" # Review and deliberately update before production.
+k3s_version: "v1.36.4+k3s1" # Pinned for new deployments; use docs/upgrade-existing-cluster.md for an existing cluster.
 kube_vip_interface: "ens192" # Confirm the primary node NIC, for example ens192 or eth0.
+
+# Safety guard: leave false for normal runs. This playbook does not perform a
+# staged Rancher upgrade; see docs/upgrade-existing-cluster.md instead.
+rancher_allow_version_change: false
 
 # A private CA root certificate and its key, stored only on the Ansible control host.
 internal_ca_cert_path: "~/.config/rancher/rancher-root-ca.crt"

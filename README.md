@@ -108,7 +108,7 @@ ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/site.yml
 
 The included `ansible.cfg` uses SSH `StrictHostKeyChecking=accept-new`: each freshly cloned VM's first host key is automatically recorded in `~/.ssh/known_hosts`, while a subsequently changed key still stops the run for review. This avoids interactive prompts during first deployment without globally disabling SSH host-key verification.
 
-The K3s version is pinned to `v1.31.6+k3s1`, which is compatible with the Rancher `2.10.2` chart used here. Do not let an existing cluster silently remain on a newer K3s release: reinstall the disposable test cluster at the pinned version before installing Rancher.
+New deployments are pinned to K3s `v1.36.4+k3s1` and Rancher `2.15.1`. These pins are for a **new cluster**. Do not rerun this playbook against an existing older Rancher installation to jump directly to these versions: follow [the staged upgrade runbook](docs/upgrade-existing-cluster.md). The playbook refuses an unapproved Rancher chart-version change as an additional safeguard.
 
 ### vCenter TLS
 
