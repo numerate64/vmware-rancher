@@ -39,8 +39,10 @@
           exit 1
         }
         root_pv="$(pvs --noheadings -o pv_name --select "vg_name=$root_vg" | xargs)"
-        parent_disk="$(lsblk -no PKNAME "$root_pv")"
-        partition_number="$(lsblk -no PARTN "$root_pv")"
+        # --nodeps is essential: without it, lsblk also emits the device-mapper
+        # child of the PV, resulting in a multi-line and invalid growpart target.
+        parent_disk="$(lsblk -dno PKNAME "$root_pv")"
+        partition_number="$(lsblk -dno PARTN "$root_pv")"
         [ -n "$parent_disk" ] && [ -n "$partition_number" ] || {
           echo "Unable to identify the backing disk and partition for $root_pv" >&2
           exit 1
